@@ -1,0 +1,109 @@
+procedure main(args)
+	write("From Bearing: " || args[1] || " to " || bearingToRad(args[1]) || " Radians.")
+	write("Azimuth: " || args[1] || " to " || azimuthToRad(args[1]) || " Radians.")
+end
+
+procedure bearingToRad(s)
+	local
+		north,
+		south,
+		east,
+		west,
+		acceptableSet,
+		ns,
+		NS,
+		ew,
+		EW,
+		sixty,
+		deg,
+		degree,
+		ninety,
+		minutes,
+		seconds,
+		sep,
+		bearing,
+		result
+	
+	acceptableSet := 'NnSsEeWw.-:' ++ &digits
+	north := PAny("Nn")
+	south := PAny("Ss")
+	east := PAny("Ee")
+	west := PAny("Ww")
+	ns := north .| south
+	ew := east .| west
+	sixty := (PAny("012345")) && &digits
+	ninety := (("" .| PAny(" 012345678")) && &digits) .| "90"
+	sep := PAny(".-:")
+	bearing := ns -> NS && ninety -> deg && sep && sixty -> minutes && sixty -> seconds && ew -> EW .|
+			ns -> NS && ninety -> deg && sep && sixty -> minutes && sep && sixty -> seconds && ew  -> EW .|
+			ns -> NS && ninety -> deg && sep && sixty -> minutes && ew -> EW .|
+			ns -> NS && ninety -> deg && sep && ew -> EW .|
+			ns -> NS && ninety -> deg && ew -> EW
+			
+	if s ?? PNotAny(acceptableSet) then return fail
+	else {
+		if s ?? bearing then {
+			if NS ?? north then {
+				degree := 0.0
+				if EW ?? east then degree := deg
+				else degree -:= deg
+			} else {
+				degree := 180.0
+				if EW ?? east then degree -:= deg
+				else degree +:= deg
+			}
+			return toRad(degree, minutes, seconds)
+		} else return fail
+	}
+end
+
+procedure azimuthToRad(s)
+	local
+		acceptableSet,
+		sixty,
+		threeSixty,
+		sep,
+		azimuth,
+		deg,
+		degree,
+		mins,
+		minutes,
+		secs,
+		seconds,
+		rad
+	
+	acceptableSet := '.-:' ++ &digits
+	sixty := PAny("012345") && &digits
+	threeSixty := ("" .| PAny(" 012")) && ("" .| " " .| &digits) && &digits .|
+		PAny("3") && sixty
+	sep := PAny(".-:")
+	azimuth := threeSixty $$ deg && sep && sixty $$ mins && sixty $$ secs .|
+		threeSixty $$ deg && sep && sixty $$ mins && sep && sixty $$ secs .|
+		threeSixty $$ deg && sep && sixty $$ mins .|
+		threeSixty $$ deg && sep
+	
+	if s ?? PNotAny(acceptableSet) then return fail
+	else 
+		if s ?? azimuth then 	
+			return toRad(deg, mins, secs)
+		else return fail
+end
+
+procedure toRad(deg, mins, secs)
+	local
+		degree,
+		minutes,
+		seconds
+		
+	if /mins then mins := 0.0
+	if /secs then secs := 0.0 
+	degree := 90.0 - deg
+	if degree < 0.0 then degree +:= 360.0 
+	minutes := 60.0 - mins
+	if minutes = 60.0 then minutes := 0.0
+	seconds := 60.0 - secs
+	if seconds = 60 then seconds := 0.0
+	if \minutes then degree +:= minutes / 60.0
+	if \seconds then degree +:= seconds / 3600.0
+	return (degree / 180.0) * &pi
+end
